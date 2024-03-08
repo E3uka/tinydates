@@ -1,0 +1,53 @@
+version: '3.3'
+
+services:
+  tinydates:
+    networks:
+      - postgres
+      - redis
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tinydates
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    networks:
+      - postgres
+    image: postgres:13-alpine
+    container_name: postgres
+    environment:
+      # for assessment purposed only; bare usernames and password is no bueno
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+  redis:
+    networks:
+      - redis
+    image: redis:6-alpine
+    container_name: redis
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis/:/usr/local/etc/redis/
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+networks:
+  postgres:
+    driver: bridge
+  redis:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
