@@ -30,6 +30,16 @@ By using a command line JSON processing tool like [jq](https://stedolan.github.i
 curl localhost:8080/user/create | jq .
 ```
 
+## Testing
+
+There has been a series of test cases that have been produced. This can be found in the
+[`service_test`](./service_test.go) file. You can run the tests with the below command:
+
+```sh
+# -cover includes code coverage to the result
+go test ./... -cover
+```
+
 Kind regards,
 
 Ebuka Agbanyim.

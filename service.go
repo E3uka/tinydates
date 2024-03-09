@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"tinydates/cache"
 	"tinydates/store"
-
-	"github.com/gomodule/redigo/redis"
 )
 
 const (
@@ -32,10 +31,10 @@ type Service interface {
 
 type tinydates struct {
 	store store.Store
-	cache *redis.Pool
+	cache cache.Cache
 }
 
-func New(store store.Store, cache *redis.Pool) Service {
+func New(store store.Store, cache cache.Cache) Service {
 	return tinydates{store: store, cache: cache}
 }
 

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 	"tinydates"
+	"tinydates/cache"
 	"tinydates/store"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -39,6 +40,8 @@ func run() error {
 		os.Exit(1)
 	}
 	defer dbPool.Close()
+
+	// create store using connection pool
 	postgresStore := store.NewTinydatesPgStore(dbPool)
 
 	// run idempotent database migrations at start of application
@@ -64,12 +67,12 @@ func run() error {
 			)
 		},
 	}
-	// connection to be used as follows
-	conn := cachePool.Get()
-	defer conn.Close()
+
+	// create cache using connection pool
+	redisCache := cache.NewTinydatesRedisCache(&cachePool)
 
 	// Tinydates service creation; dependency injection of db, and cache
-	service := tinydates.New(postgresStore, &cachePool)
+	service := tinydates.New(postgresStore, redisCache)
 
 	// handler creation; dependency injection of context and service
 	handler := tinydates.NewTinydatesHandler(ctx, service)
