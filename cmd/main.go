@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+	"tinydates"
+	"tinydates/store"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -16,14 +19,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	httpAddr = flag.String("http", ":8080", "http listen address")
-)
-
 // run starts the tinydates service
 func run() error {
-	// setup; parse flags, blocking error channel and parent context object
-	flag.Parse()
+	// setup; blocking error channel and parent context object
+	// note: omitting creation of loggers and instrumentation for simplicity
 	errChan := make(chan error)
 	ctx := contextWithSignal(context.Background())
 
@@ -40,6 +39,7 @@ func run() error {
 		os.Exit(1)
 	}
 	defer dbPool.Close()
+	postgresStore := store.NewTinydatesPgStore(dbPool)
 
 	// run idempotent database migrations at start of application
 	m, err := migrate.New(os.Getenv("MIGRATION_URL"), os.Getenv("POSTGRES_URL"))
@@ -56,7 +56,8 @@ func run() error {
 	cachePool := redis.Pool{
 		MaxIdle: 5,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial(
+			return redis.DialContext(
+				ctx,
 				"tcp",
 				os.Getenv("REDIS_URL"),
 				redis.DialPassword(os.Getenv("REDIS_PASSWORD")),
@@ -67,7 +68,29 @@ func run() error {
 	conn := cachePool.Get()
 	defer conn.Close()
 
-	// listen for user termination (CTRL+C) signal in goroutine. Ungraceful
+	// Tinydates service creation; dependency injection of db, and cache
+	service := tinydates.New(postgresStore, &cachePool)
+
+	// handler creation; dependency injection of context and service
+	handler := tinydates.NewTinydatesHandler(ctx, service)
+
+	// HTTP server creation with sane defaults for the type of service
+	server := &http.Server{
+		Addr: os.Getenv("PORT"),
+		Handler: handler,
+		IdleTimeout: 15 * time.Second,
+		ReadTimeout: 5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+
+	// start the server in a goroutine; graceful shutdown upon a major error
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// listen for user termination (CTRL+C) signal in goroutine; ungraceful
 	// termination upon shutdown signal
 	go func() {
 		ch := make(chan os.Signal, 1)
@@ -94,6 +117,7 @@ func contextWithSignal(ctx context.Context) context.Context {
 	return newCtx
 }
 
+// application entrypoint
 func main() {
 	if err := run(); err != nil {
 		fmt.Println(err)
