@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -33,10 +36,21 @@ func run() error {
 	// database connection and initialisation
 	dbPool, err := pgxpool.New(ctx, os.Getenv("POSTGRES_URL"))
 	if err != nil {
-		fmt.Printf("Unable to connect to the database: %v\n", dbPool)
+		fmt.Printf("unable to connect to the database: %v\n", dbPool)
 		os.Exit(1)
 	}
 	defer dbPool.Close()
+
+	// run idempotent database migrations at start of application
+	m, err := migrate.New(os.Getenv("MIGRATION_URL"), os.Getenv("POSTGRES_URL"))
+	if err != nil {
+		fmt.Printf("unable to connect to migration database: %v\n", err)
+		os.Exit(1)
+	}
+	if err = m.Up(); err != nil && err != migrate.ErrNoChange {
+		fmt.Printf("failed to run database migration: %v\n", err)
+		os.Exit(1)
+	}
 
 	// cache connection and initialisation
 	cachePool := redis.Pool{

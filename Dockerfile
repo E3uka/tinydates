@@ -15,6 +15,7 @@ FROM alpine:latest
 WORKDIR /bin
 COPY --from=builder /go/src/app/main /bin
 COPY --from=builder /go/src/app/.env /bin
+COPY --from=builder /go/src/app/config/postgres/migration /config/postgres/migration
 
 EXPOSE 8080
 
