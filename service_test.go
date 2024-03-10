@@ -1,6 +1,7 @@
 package tinydates
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -23,7 +24,7 @@ import (
 var (
 	dbPool      *pgxpool.Pool
 	testStore   store.TestStore
-	testCache   cache.TestCache
+	testCache   cache.Cache
 	testHandler http.Handler
 	service     Service
 )
@@ -118,4 +119,52 @@ func TestNewUserCreation(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, user)
+}
+
+func TestUserLogin(t *testing.T) {
+	ctx := context.Background()
+	// create a new user
+	user, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+	testCases := []struct {
+		name     string
+		testCase LoginRequest
+	}{
+		{"success", LoginRequest{user.Email, user.Password}},
+		{"failure email not found", LoginRequest{"invalid email", user.Password}},
+		{"failure password incorrect", LoginRequest{user.Email, "invalid password"}},
+	}
+
+	for _, tc := range testCases {
+		if tc.name == "success" {
+			jsonRequest, err := json.Marshal(tc.testCase)
+			require.NoError(t, err)
+			reader := bytes.NewReader(jsonRequest)
+			req := httptest.NewRequest("POST", "/login", reader)
+			req.WithContext(ctx)
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			testHandler.ServeHTTP(rec, req)
+			resp := rec.Result()
+
+			var success LoginResponse
+			err = json.NewDecoder(resp.Body).Decode(&success)
+
+			require.Equal(t, 201, resp.StatusCode)
+			require.NoError(t, err)
+			require.NotNil(t, success)
+		} else {
+			jsonRequest, err := json.Marshal(tc.testCase)
+			require.NoError(t, err)
+			reader := bytes.NewReader(jsonRequest)
+			req := httptest.NewRequest("POST", "/login", reader)
+			req.WithContext(ctx)
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			testHandler.ServeHTTP(rec, req)
+			resp := rec.Result()
+
+			require.Equal(t, 401, resp.StatusCode)
+		}
+	}
 }

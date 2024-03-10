@@ -13,7 +13,7 @@ This server is listening on port `8080` by default. You can specify the required
 
 ## Part 1
 
-## I. Creating a random user
+## i. Creating a random user
 
 Once a running instance of the composed applications are running, in another shell instance you can send a simple `GET` request to the `/create/user` endpoint to get a randomly created user. You can test this by entering the following script into the second shell instance:
 
@@ -28,6 +28,24 @@ By using a command line JSON processing tool like [jq](https://stedolan.github.i
 ```sh
 # be sure to change the port if you are using a custom port
 curl localhost:8080/user/create | jq .
+```
+
+## ii. Logging in
+
+Once a user has been crated you can login by sending a `POST`request to `/login` with the following payload:
+
+```
+{
+  "email": "[user email here]",
+  "password": "[user password here]",
+}
+```
+
+you can run the following to make the login request test:
+
+```
+# be sure to change the email and password with the obtain from creating users above
+curl -X POST -H "Content-Type: application/json" -d '{"email": "changeme", "password": "changeme"}' localhost:8080/login
 ```
 
 ## Testing

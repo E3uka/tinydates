@@ -9,8 +9,17 @@ type User struct {
 	Age      int    `json:age`
 }
 
-// GenericErrResponse is a generic error result return to the caller after an                                                                                                                                                                          │~
-// error is raised from an endpoint. The appropriate error reason should be                                                                                                                                                                            │~
+type LoginRequest struct {
+	Email    string `json:email`
+	Password string `json:password`
+}
+
+type LoginResponse struct {
+	Token string `json:token`
+}
+
+// GenericErrResponse is a generic error result return to the caller after an
+// error is raised from an endpoint. The appropriate error reason should be
 // returned to the caller.
 type GenericErrResponse struct {
 	Err string `json:omitempty`
