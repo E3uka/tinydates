@@ -15,7 +15,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -55,24 +54,11 @@ func run() error {
 		os.Exit(1)
 	}
 
-	// cache connection and initialisation
-	cachePool := redis.Pool{
-		MaxIdle: 5,
-		Dial: func() (redis.Conn, error) {
-			return redis.DialContext(
-				ctx,
-				"tcp",
-				os.Getenv("REDIS_URL"),
-				redis.DialPassword(os.Getenv("REDIS_PASSWORD")),
-			)
-		},
-	}
-
 	// create cache using connection pool
-	redisCache := cache.NewTinydatesRedisCache(&cachePool)
+	inMemoryCache := cache.NewTinydatesInMemoryCache()
 
 	// Tinydates service creation; dependency injection of db, and cache
-	service := tinydates.New(postgresStore, redisCache)
+	service := tinydates.New(postgresStore, inMemoryCache)
 
 	// handler creation; dependency injection of context and service
 	handler := tinydates.NewTinydatesHandler(ctx, service)

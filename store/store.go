@@ -14,6 +14,9 @@ type Store interface {
 
 	// GetPassword returns the password for the user with the supplied email 
 	GetPassword(ctx context.Context, email string) (string, error)
+
+	// Discover finds profiles that are a match for the user with supplied id
+	Discover(ctx context.Context, id int) ([]PotentialMatch, error)
 }
 
 // TestStore are the test methods used for testing the tinydates database.

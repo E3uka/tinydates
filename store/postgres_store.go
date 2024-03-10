@@ -77,3 +77,40 @@ func (store *tinydatesPgStore) GetPassword(
 
 	return password, nil
 }
+
+const (
+	discover = `
+        SELECT id, name, gender, age
+		FROM users
+		WHERE id != $1
+	`
+)
+
+func (store *tinydatesPgStore) Discover(
+	ctx context.Context,
+	id int,
+) ([]PotentialMatch, error) {
+	potentials := make([]PotentialMatch, 0)
+
+	rows, err := store.Db.Query(ctx, discover, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var user PotentialMatch
+
+		if err := rows.Scan(
+			&user.Id,
+			&user.Name,
+			&user.Gender,
+			&user.Age,
+		); err != nil {
+			return nil, err
+		}
+		potentials = append(potentials, user)
+	}
+
+	return potentials, nil
+}

@@ -3,16 +3,17 @@ package tinydates
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
-	router := gin.Default()
+	handler := gin.Default()
 
-	router.Use(contentTypeJSON())
+	handler.Use(contentTypeJSON())
 
-	router.GET("/user/create", func(c *gin.Context) {
+	handler.GET("/user/create", func(c *gin.Context) {
 		user, err := svc.CreateUser(ctx)
 		if err != nil {
 			// an internal server errror must have occured
@@ -25,7 +26,7 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 		c.JSON(http.StatusCreated, user)
 	})
 
-	router.POST("/login", func(c *gin.Context) {
+	handler.POST("/login", func(c *gin.Context) {
 		var request LoginRequest
 
 		// deserialize JSON POST request into the LoginRequest struct, if
@@ -39,9 +40,17 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 		// submit a login request to the service, for simplicity any errors
 		// found from this point is treated like an invalid login attempt
 		loginResponse, err := svc.Login(ctx, request)
-		if err != nil {
+		switch err {
+		case nil:
+		case ErrUnauthorized:
 			c.JSON(
 				http.StatusUnauthorized,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		default:
+			c.JSON(
+				http.StatusInternalServerError,
 				GenericErrResponse{Err: err.Error()},
 			)
 			return
@@ -50,7 +59,40 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 		c.JSON(http.StatusCreated, loginResponse)
 	})
 
-	return router
+	handler.GET("/discover", func(c *gin.Context) {
+		idString := c.GetHeader("Id")
+		token := c.GetHeader("Authorization")
+
+		id, err := strconv.Atoi(idString)
+		if err != nil {
+			c.JSON(
+				http.StatusBadRequest,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		}
+
+		users, err := svc.Discover(ctx, id, token)
+		switch err {
+		case nil:
+		case ErrUnauthorized:
+			c.JSON(
+				http.StatusUnauthorized,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		default:
+			c.JSON(
+				http.StatusInternalServerError,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		}
+
+		c.JSON(http.StatusOK, users)
+	})
+
+	return handler
 }
 
 // contentTypeJSON middleware sets the response header to application/json for

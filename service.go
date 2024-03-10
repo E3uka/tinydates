@@ -10,10 +10,9 @@ import (
 )
 
 const (
-	letters           = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	maxNameLength     = 20
-	maxPasswordLength = 30
-	maxAge            = 120
+	letters   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	maxLength = 20
+	maxAge    = 120
 )
 
 var gender = []string{"male", "female", "other"}
@@ -24,6 +23,12 @@ var (
 
 	// ErrInvalidPassword is returned when supplied and found passwords differs
 	ErrInvalidPassword = errors.New("error invalid password")
+
+	// ErrUnauthorised is returned when the request is not authorised
+	ErrUnauthorized = errors.New("error unathorized access")
+
+	// ErrInternalService is returned when something major has gone wrong
+	ErrInternalService = errors.New("error unathorized access")
 )
 
 // Service interface encapsulates all functionalities of the tinydates service
@@ -31,8 +36,15 @@ type Service interface {
 	// CreateUser creates and stores a new user in the system.
 	CreateUser(ctx context.Context) (User, error)
 
-	// Login logs a user into the system by means of an entry into the cache
+	// Login logs a user into the system by means of an entry into the cache.
 	Login(ctx context.Context, req LoginRequest) (LoginResponse, error)
+
+	// Discover finds profiles that are a match for the user with supplied id
+	Discover(
+		ctx context.Context,
+		id int,
+		token string,
+	) (DiscoverResponse, error)
 }
 
 type tinydates struct {
@@ -45,10 +57,10 @@ func New(store store.Store, cache cache.Cache) Service {
 }
 
 func (td tinydates) CreateUser(ctx context.Context) (User, error) {
-	randomName := createRandomString(maxNameLength)
+	randomName := createRandomString(maxLength)
 	randomEmail := fmt.Sprintf("%v@mail.com", randomName)
 	// returning password as plaintext is no bueno
-	randomPassword := createRandomString(maxNameLength)
+	randomPassword := createRandomString(maxLength)
 	randomGender := gender[rand.Intn(len(gender))]
 	randomAge := rand.Intn(maxAge)
 
@@ -84,17 +96,49 @@ func (td tinydates) Login(
 	// for brevity assuming user not logged in
 	storedPassword, err := td.store.GetPassword(ctx, req.Email)
 	if err != nil {
-		return LoginResponse{}, err
+		return LoginResponse{}, ErrInternalService
 	}
 
 	if req.Password == storedPassword {
 		// new token created in same way as name for simplicity
-		token := createRandomString(maxNameLength)
-		td.cache.StartSession(ctx, token)
+		token := createRandomString(maxLength)
+		if err := td.cache.StartSession(ctx, token); err != nil {
+			return LoginResponse{}, err
+		}
 		return LoginResponse{Token: token}, err
 	} else {
 		return LoginResponse{}, ErrInvalidPassword
 	}
+}
+
+func (td tinydates) Discover(
+	ctx context.Context,
+	id int,
+	token string,
+) (DiscoverResponse, error) {
+	if !td.cache.Authorized(ctx, token) {
+		return DiscoverResponse{}, ErrUnauthorized
+	}
+
+	profiles, err := td.store.Discover(ctx, id)
+	if err != nil {
+		return DiscoverResponse{}, ErrInternalService
+	}
+
+	discoveredUsers := make([]DiscoveredUser, 0)
+
+	for _, profile := range profiles {
+		var usr DiscoveredUser
+
+		usr.Id = profile.Id
+		usr.Name = profile.Name
+		usr.Gender = profile.Gender
+		usr.Age = profile.Age
+
+		discoveredUsers = append(discoveredUsers, usr)
+	}
+
+	return DiscoverResponse{Results: discoveredUsers}, nil
 }
 
 func createRandomString(n int) string {

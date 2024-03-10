@@ -6,7 +6,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-const SESSION_KEY = ""
+const SESSION_KEY = "tinysession"
 
 // tinydatesRedisCache provide access to the Cache methods for a Redis backed
 // cache.
@@ -25,17 +25,14 @@ func (cache *tinydatesRedisCache) StartSession(
 	conn := cache.Cache.Get()
 	defer conn.Close()
 
-	if err := conn.Send("SADD", SESSION_KEY, token); err != nil {
-		return err
-	}
-	if err := conn.Flush(); err != nil {
+	if _, err := conn.Do("SADD", SESSION_KEY, token); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (cache *tinydatesRedisCache) Authenticated(
+func (cache *tinydatesRedisCache) Authorized(
 	ctx context.Context,
 	token string,
 ) bool {
@@ -59,10 +56,7 @@ func (cache *tinydatesRedisCache) EndSession(
 	conn := cache.Cache.Get()
 	defer conn.Close()
 
-	if err := conn.Send("SREM", SESSION_KEY, token); err != nil {
-		return err
-	}
-	if err := conn.Flush(); err != nil {
+	if _, err := conn.Do("SREM", SESSION_KEY, token); err != nil {
 		return err
 	}
 

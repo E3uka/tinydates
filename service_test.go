@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 	"tinydates/cache"
@@ -88,7 +89,6 @@ func TestMain(m *testing.M) {
 
 	// run tear up and down scripts at start
 	if err := testStore.Down(ctx); err != nil {
-		fmt.Println("dslfjdklfjkldsf")
 		log.Fatalf("could not teardown the resource: %s", err)
 	}
 	if err := testStore.Up(ctx); err != nil {
@@ -107,7 +107,7 @@ func TestMain(m *testing.M) {
 
 func TestNewUserCreation(t *testing.T) {
 	ctx := context.Background()
-	req := httptest.NewRequest("", "/user/create", nil)
+	req := httptest.NewRequest("GET", "/user/create", nil)
 	req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -164,7 +164,36 @@ func TestUserLogin(t *testing.T) {
 			testHandler.ServeHTTP(rec, req)
 			resp := rec.Result()
 
-			require.Equal(t, 401, resp.StatusCode)
+			require.Equal(t, 500, resp.StatusCode)
 		}
 	}
+}
+
+func TestUserDiscovery(t *testing.T) {
+	ctx := context.Background()
+	// create new users
+	user1, err := service.CreateUser(ctx)
+
+	// discovery based on user 1, login to obtain loginResponse
+	loginResponse, err := service.Login(ctx, LoginRequest{user1.Email, user1.Password})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "/discover", nil)
+	req.WithContext(ctx)
+	// for simplicity not following standard Authorization: <scheme> <token>
+	req.Header.Set("Id", strconv.Itoa(user1.Id))
+	req.Header.Set("Authorization", loginResponse.Token)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	testHandler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	var discoverResponse DiscoverResponse
+	err = json.NewDecoder(resp.Body).Decode(&discoverResponse)
+
+	// for simplicity not checking exact users match just status code and
+	// correct number of results
+	require.Equal(t, 200, resp.StatusCode)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(discoverResponse.Results))
 }

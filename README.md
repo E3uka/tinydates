@@ -48,6 +48,15 @@ you can run the following to make the login request test:
 curl -X POST -H "Content-Type: application/json" -d '{"email": "changeme", "password": "changeme"}' localhost:8080/login
 ```
 
+## iii. Discovery
+
+Once you have logged in you can find potential matches for the user by sending a `GET` request to `/discover` with the received token and the user Id in the header:
+
+```
+# be sure to change the email and password with the obtain from creating users above
+curl -X GET -H "Content-Type: application/json" -H "Authorization: changeme" -H "Id: changeme" localhost:8080/discover
+```
+
 ## Testing
 
 There has been a series of test cases that have been produced. This can be found in the

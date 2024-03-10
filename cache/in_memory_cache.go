@@ -23,7 +23,7 @@ func (cache *tinydatesInMemoryCache) StartSession(
 	return nil
 }
 
-func (cache *tinydatesInMemoryCache) Authenticated(
+func (cache *tinydatesInMemoryCache) Authorized(
 	ctx context.Context,
 	token string,
 ) bool {
