@@ -173,6 +173,7 @@ func TestUserDiscovery(t *testing.T) {
 	ctx := context.Background()
 	// create new users
 	user1, err := service.CreateUser(ctx)
+	require.NoError(t, err)
 
 	// discovery based on user 1, login to obtain loginResponse
 	loginResponse, err := service.Login(ctx, LoginRequest{user1.Email, user1.Password})
@@ -196,4 +197,67 @@ func TestUserDiscovery(t *testing.T) {
 	require.Equal(t, 200, resp.StatusCode)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(discoverResponse.Results))
+}
+
+func TestUserSwipes(t *testing.T) {
+	ctx := context.Background()
+	// create new users
+	user1, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+	user2, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+
+	// login both users to obtain tokens
+	user1Login, err := service.Login(ctx, LoginRequest{user1.Email, user1.Password})
+	require.NoError(t, err)
+	user2Login, err := service.Login(ctx, LoginRequest{user2.Email, user2.Password})
+	require.NoError(t, err)
+
+	// create swipe requests for user1 and user2 to send
+	user1SwipeRequest := SwipeRequest{SwiperId: user1.Id, SwipeeId: user2.Id, Decision: true}
+	user2SwipeRequest := SwipeRequest{SwiperId: user2.Id, SwipeeId: user1.Id, Decision: true}
+
+	// marshall each request and create readers ready to send
+	user1Json, err := json.Marshal(user1SwipeRequest)
+	require.NoError(t, err)
+	user2Json, err := json.Marshal(user2SwipeRequest)
+	require.NoError(t, err)
+	user1Reader := bytes.NewReader(user1Json)
+	user2Reader := bytes.NewReader(user2Json)
+
+	// send the first swipe request
+	req := httptest.NewRequest("POST", "/swipe", user1Reader)
+	req.WithContext(ctx)
+	req.Header.Set("Id", strconv.Itoa(user1.Id))
+	req.Header.Set("Authorization", user1Login.Token)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	testHandler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	// decode the response and check that matchId is not present primarily
+	var user1SwipeResponse SwipeResponse
+	err = json.NewDecoder(resp.Body).Decode(&user1SwipeResponse)
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, false, user1SwipeResponse.Matched)
+	require.Empty(t, user1SwipeResponse.MatchId)
+
+	// send the second swipe request
+	req = httptest.NewRequest("POST", "/swipe", user2Reader)
+	req.WithContext(ctx)
+	req.Header.Set("Id", strconv.Itoa(user1.Id))
+	req.Header.Set("Authorization", user2Login.Token)
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	testHandler.ServeHTTP(rec, req)
+	resp = rec.Result()
+
+	// decode the response and check that matchId is not present primarily
+	var user2SwipeResponse SwipeResponse
+	err = json.NewDecoder(resp.Body).Decode(&user2SwipeResponse)
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, true, user2SwipeResponse.Matched)
+	require.NotEmpty(t, user2SwipeResponse.MatchId)
 }

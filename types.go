@@ -29,6 +29,17 @@ type DiscoverResponse struct {
 	Results []DiscoveredUser `json:"results"`
 }
 
+type SwipeRequest struct {
+	SwiperId int  `json:"swiperId"`
+	SwipeeId int  `json:"swipeeId"`
+	Decision bool `json:"decision"`
+}
+
+type SwipeResponse struct {
+	Matched bool `json:"matched"`
+	MatchId int  `json:"matchID,omitempty"`
+}
+
 // GenericErrResponse is a generic error result return to the caller after an
 // error is raised from an endpoint. The appropriate error reason should be
 // returned to the caller.

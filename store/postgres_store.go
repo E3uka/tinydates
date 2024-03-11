@@ -119,3 +119,54 @@ func (store *tinydatesPgStore) Discover(
 
 	return potentials, nil
 }
+
+const (
+	swipe = `
+        INSERT INTO swipes (swiper, swipee, decision)
+		VALUES ($1, $2, $3)
+		RETURNING id;
+	`
+
+	isMatch = `
+        SELECT EXISTS(
+			SELECT 1 FROM swipes
+			WHERE swiper = $1
+			AND swipee = $2
+		)
+	`
+)
+
+func (store *tinydatesPgStore) Swipe(
+	ctx context.Context,
+	swiperId int,
+	swipeeId int,
+	decision bool,
+) (int, bool, error) {
+	var matchId int
+	var match bool
+
+	if err := store.Db.QueryRow(
+		ctx,
+		swipe,
+		swiperId,
+		swipeeId,
+		decision,
+	).Scan(
+		&matchId,
+	); err != nil {
+		return 0, false, err
+	}
+
+	if err := store.Db.QueryRow(
+		ctx,
+		isMatch,
+		swipeeId,
+		swiperId,
+	).Scan(
+		&match,
+	); err != nil {
+		return 0, false, err
+	}
+
+	return matchId, match, nil
+}

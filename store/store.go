@@ -17,6 +17,15 @@ type Store interface {
 
 	// Discover finds profiles that are a match for the user with supplied id
 	Discover(ctx context.Context, id int) ([]PotentialMatch, error)
+
+	// Swipe adds a swipe decision for the swiper and returns the match id and
+	// whether the swiper has also been favourably swiped by the swipee
+	Swipe(
+		ctx context.Context,
+		swiperId int,
+		swipeeId int,
+		decision bool,
+	) (int, bool, error)
 }
 
 // TestStore are the test methods used for testing the tinydates database.

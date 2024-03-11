@@ -92,6 +92,36 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 		c.JSON(http.StatusOK, users)
 	})
 
+	handler.POST("/swipe", func(c *gin.Context) {
+		var request SwipeRequest
+
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, GenericErrResponse{Err: err.Error()})
+			return
+		}
+
+		token := c.GetHeader("Authorization")
+
+		response, err := svc.Swipe(ctx, token, request)
+		switch err {
+		case nil:
+		case ErrUnauthorized:
+			c.JSON(
+				http.StatusUnauthorized,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		default:
+			c.JSON(
+				http.StatusInternalServerError,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		}
+
+		c.JSON(http.StatusOK, response)
+	})
+
 	return handler
 }
 

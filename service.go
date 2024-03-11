@@ -39,12 +39,19 @@ type Service interface {
 	// Login logs a user into the system by means of an entry into the cache.
 	Login(ctx context.Context, req LoginRequest) (LoginResponse, error)
 
-	// Discover finds profiles that are a match for the user with supplied id
+	// Discover finds profiles that are a match for the user with supplied id.
 	Discover(
 		ctx context.Context,
 		id int,
 		token string,
 	) (DiscoverResponse, error)
+
+	// Swipe handles the action when a user swipes on a discovered profile.
+	Swipe(
+		ctx context.Context,
+		token string,
+		req SwipeRequest,
+	) (SwipeResponse, error)
 }
 
 type tinydates struct {
@@ -139,6 +146,34 @@ func (td tinydates) Discover(
 	}
 
 	return DiscoverResponse{Results: discoveredUsers}, nil
+}
+
+func (td tinydates) Swipe(
+	ctx context.Context,
+	token string,
+	req SwipeRequest,
+) (SwipeResponse, error) {
+	if !td.cache.Authorized(ctx, token) {
+		return SwipeResponse{}, ErrUnauthorized
+	}
+
+	matchId, match, err := td.store.Swipe(
+		ctx,
+		req.SwiperId,
+		req.SwipeeId,
+		req.Decision,
+	)
+
+	if err != nil {
+		return SwipeResponse{}, ErrInternalService
+	}
+
+	// only a match if the swiper also swiped favourably
+	if match && req.Decision == true {
+		return SwipeResponse{Matched: match, MatchId: matchId}, nil
+	} else {
+		return SwipeResponse{Matched: match}, nil
+	}
 }
 
 func createRandomString(n int) string {

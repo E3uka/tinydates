@@ -21,8 +21,7 @@ Once a running instance of the composed applications are running, in another she
 curl localhost:8080/user/create
 ```
 
-By using a command line JSON processing tool like [jq](https://stedolan.github.io/jq/) you can
-"pretty print" the output on your terminal as follows:
+By using a command line JSON processing tool like [jq](https://stedolan.github.io/jq/) you can "pretty print" the output on your terminal as follows:
 
 ```sh
 # be sure to change the port if you are using a custom port
@@ -31,20 +30,14 @@ curl localhost:8080/user/create | jq .
 
 ## ii. Logging in
 
-Once a user has been crated you can login by sending a `POST`request to `/login` with the following payload:
-
-```
-{
-  "email": "[user email here]",
-  "password": "[user password here]",
-}
-```
-
-you can run the following to make the login request test:
+Once a user has been created you can login by sending a `POST`request to `/login` with the following payload:
 
 ```
 # be sure to change the email and password with the obtain from creating users above
-curl -X POST -H "Content-Type: application/json" -d '{"email": "changeme", "password": "changeme"}' localhost:8080/login
+curl -X POST \
+-H "Content-Type: application/json" \
+-d '{"email": "<string-changeme>", "password": "<string-changeme>"}' \
+localhost:8080/login
 ```
 
 ## iii. Discovery
@@ -52,14 +45,32 @@ curl -X POST -H "Content-Type: application/json" -d '{"email": "changeme", "pass
 Once you have logged in you can find potential matches for the user by sending a `GET` request to `/discover` with the received token and the user Id in the header:
 
 ```
+# be sure to change the Authorization with the token obtained from logging in above
+curl -X GET \
+-H "Content-Type: application/json" \
+-H "Authorization: <string-changeme>" \
+-H "Id: <integer-changeme>" \
+localhost:8080/discover
+```
+
+## iv. Swiping
+
+Users can swipe on each other to signify preference; this can be done by sending a `POST` request to `/swipe` with the received token in header:
+
+```
 # be sure to change the email and password with the obtain from creating users above
-curl -X GET -H "Content-Type: application/json" -H "Authorization: changeme" -H "Id: changeme" localhost:8080/discover
+curl -X POST \
+-H "Content-Type: application/json" \
+-H "Authorization: <integer-changeme>" \
+-d '{"swiperId": <integer-changeme>, "swipeeId": <integer-changeme>, "decision": <boolean-changeme>}' \
+localhost:8080/swipe
 ```
 
 ## Testing
 
-There has been a series of test cases that have been produced. This can be found in the
-[`service_test`](./service_test.go) file. You can run the tests with the below command:
+There has been a series of test cases that have been produced. This can be found in the [`service_test`](./service_test.go) file. 
+These tests spin up a short-lived docker container and connects to it, runs manual migrations and tests the service through a 'real' and not mocked http request.
+You can run the tests with the below command:
 
 ```sh
 # -cover includes code coverage to the result
