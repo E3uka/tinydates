@@ -83,6 +83,11 @@ const (
         SELECT id, name, gender, age
 		FROM users
 		WHERE id != $1
+		AND id NOT IN (
+		    SELECT swipee
+			FROM swipes
+			WHERE swiper = $1
+		)
 	`
 )
 

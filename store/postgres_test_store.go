@@ -24,6 +24,13 @@ const (
 			UNIQUE(id, email)
 		);
 
+		CREATE TABLE IF NOT EXISTS "swipes" (
+			"id" bigserial PRIMARY KEY,
+			"swiper" integer NOT NULL,
+			"swipee" integer NOT NULL,
+			"decision" boolean NOT NULL
+		);
+
 		COMMIT;
 	`
 )
@@ -51,6 +58,7 @@ func (store *tinydatesPgStore) Up(ctx context.Context) error {
 const (
 	Down = `
 		DROP TABLE IF EXISTS "users";
+		DROP TABLE IF EXISTS "swipes";
 	`
 )
 

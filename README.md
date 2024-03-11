@@ -2,14 +2,13 @@
 Muzz technical assessment by Ebuka Agbanyim
 
 ## How to run
-This application is built and deployed user docker,
-[`a docker compose script`](./docker-compose.yaml) been created that will spinup the application and its associated data stores and caching layers. With docker installed run the below script:
+This application is built and deployed user docker, a [`docker compose`](./docker-compose.yaml) script been created that will spinup the application and its associated data stores and caching layers. With docker installed run the below script:
 
 ```sh
 docker compose up
 ```
 
-This server is listening on port `8080` by default. You can specify the required port you want by changing the `PORT` in the [`.env`](./.env) file to the required number and also changing the ports in the [`a docker compose script`](./docker-compose.yaml).
+This server is listening on port `8080` by default. You can specify the required port you want by changing the `PORT` in the [`.env`](./.env) file to the required number and also changing the ports in the [`docker compose`](./docker-compose.yaml) script.
 
 ## Part 1
 

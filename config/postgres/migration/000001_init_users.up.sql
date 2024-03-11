@@ -1,5 +1,3 @@
-BEGIN;
-
 -- idempotent table creation
 CREATE TABLE IF NOT EXISTS "users" (
     "id" bigserial PRIMARY KEY,
@@ -10,5 +8,3 @@ CREATE TABLE IF NOT EXISTS "users" (
     "age" integer NOT NULL,
     UNIQUE(id, email)
 );
-
-COMMIT;
