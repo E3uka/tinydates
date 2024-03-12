@@ -199,6 +199,36 @@ func TestUserDiscovery(t *testing.T) {
 	require.Equal(t, 2, len(discoverResponse.Results))
 }
 
+func TestInvalidQueryUserDiscovery(t *testing.T) {
+	ctx := context.Background()
+	// create new users
+	user1, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+
+	// discovery based on user 1, login to obtain loginResponse
+	loginResponse, err := service.Login(ctx, LoginRequest{user1.Email, user1.Password})
+	require.NoError(t, err)
+
+	// invalid query parameter - minAge is greater than maxAge
+	req := httptest.NewRequest("GET", "/discover?minAge=30&maxAge=26", nil)
+	req.WithContext(ctx)
+	// for simplicity not following standard Authorization: <scheme> <token>
+	req.Header.Set("Id", strconv.Itoa(user1.Id))
+	req.Header.Set("Authorization", loginResponse.Token)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	testHandler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	var discoverResponse DiscoverResponse
+	err = json.NewDecoder(resp.Body).Decode(&discoverResponse)
+
+	// for simplicity not checking exact users match just status code and
+	// correct number of results
+	require.Equal(t, 400, resp.StatusCode)
+	require.NoError(t, err)
+}
+
 func TestUserSwipes(t *testing.T) {
 	ctx := context.Background()
 	// create new users

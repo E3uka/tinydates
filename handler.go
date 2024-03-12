@@ -62,6 +62,8 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 	handler.GET("/discover", func(c *gin.Context) {
 		idString := c.GetHeader("Id")
 		token := c.GetHeader("Authorization")
+		minAge, minAgeSupplied := c.GetQuery("minAge")
+		maxAge, maxAgeSupplied := c.GetQuery("maxAge")
 
 		id, err := strconv.Atoi(idString)
 		if err != nil {
@@ -72,12 +74,44 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 			return
 		}
 
-		users, err := svc.Discover(ctx, id, token)
+		users, err := svc.Discover(
+			ctx,
+			id,
+			token,
+			minAge,
+			minAgeSupplied,
+			maxAge,
+			maxAgeSupplied,
+		)
 		switch err {
 		case nil:
 		case ErrUnauthorized:
 			c.JSON(
 				http.StatusUnauthorized,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		case ErrUnauthorized:
+			c.JSON(
+				http.StatusUnauthorized,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		case ErrMinOrMaxAgeMissing:
+			c.JSON(
+				http.StatusBadRequest,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		case ErrMinOrMaxAgeInvalid:
+			c.JSON(
+				http.StatusBadRequest,
+				GenericErrResponse{Err: err.Error()},
+			)
+			return
+		case ErrorMinOrMaxFormat:
+			c.JSON(
+				http.StatusBadRequest,
 				GenericErrResponse{Err: err.Error()},
 			)
 			return

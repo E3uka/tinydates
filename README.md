@@ -1,5 +1,4 @@
 # Tinydates
-Muzz technical assessment by Ebuka Agbanyim
 
 ## How to run
 This application is built and deployed user docker, a [`docker compose`](./docker-compose.yaml) script been created that will spinup the application and its associated data stores and caching layers. With docker installed run the below script:
@@ -58,12 +57,26 @@ localhost:8080/discover
 Users can swipe on each other to signify preference; this can be done by sending a `POST` request to `/swipe` with the received token in header:
 
 ```
-# be sure to change the email and password with the obtain from creating users above
 curl -X POST \
 -H "Content-Type: application/json" \
 -H "Authorization: <integer-changeme>" \
 -d '{"swiperId": <integer-changeme>, "swipeeId": <integer-changeme>, "decision": <boolean-changeme>}' \
 localhost:8080/swipe
+```
+
+## Part 2
+
+## i. Filter by age
+
+You can now filter by age by supplying a query string parameter, both minimum and maximum age are required. 
+
+```
+# be sure to change the Authorization with the token obtained from logging in above
+curl -X GET \
+-H "Content-Type: application/json" \
+-H "Authorization: <string-changeme>" \
+-H "Id: <integer-changeme>" \
+localhost:8080/discover?minAge=<integer-changeme>&maxAge=<integer-changeme>
 ```
 
 ## Testing

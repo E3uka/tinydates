@@ -121,6 +121,51 @@ func (store *tinydatesPgStore) Discover(
 }
 
 const (
+	discoverWithAge = `
+        SELECT id, name, gender, age
+		FROM users
+		WHERE id != $1
+		AND id NOT IN (
+		    SELECT swipee
+			FROM swipes
+			WHERE swiper = $1
+		)
+		AND age BETWEEN $2 AND $3
+	`
+)
+
+func (store *tinydatesPgStore) DiscoverWithAge(
+	ctx context.Context,
+	id int,
+	minAge int,
+	maxAge int,
+) ([]PotentialMatch, error) {
+	potentials := make([]PotentialMatch, 0)
+
+	rows, err := store.Db.Query(ctx, discoverWithAge, id, minAge, maxAge)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var user PotentialMatch
+
+		if err := rows.Scan(
+			&user.Id,
+			&user.Name,
+			&user.Gender,
+			&user.Age,
+		); err != nil {
+			return nil, err
+		}
+		potentials = append(potentials, user)
+	}
+
+	return potentials, nil
+}
+
+const (
 	swipe = `
         INSERT INTO swipes (swiper, swipee, decision)
 		VALUES ($1, $2, $3)

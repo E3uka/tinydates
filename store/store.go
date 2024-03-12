@@ -18,6 +18,15 @@ type Store interface {
 	// Discover finds profiles that are a match for the user with supplied id
 	Discover(ctx context.Context, id int) ([]PotentialMatch, error)
 
+	// DiscoverWithAge finds profiles that are a match for the user with 
+	// supplied id and filtered by supplied age
+	DiscoverWithAge(
+		ctx context.Context,
+		id int,
+		minAge int,
+		maxAge int,
+	) ([]PotentialMatch, error)
+
 	// Swipe adds a swipe decision for the swiper and returns the match id and
 	// whether the swiper has also been favourably swiped by the swipee
 	Swipe(

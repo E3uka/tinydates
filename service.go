@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"tinydates/cache"
 	"tinydates/store"
 )
@@ -29,6 +30,18 @@ var (
 
 	// ErrInternalService is returned when something major has gone wrong
 	ErrInternalService = errors.New("error unathorized access")
+
+	// ErrMinOrMaxAgeMissing is returned when a request is invalid
+	ErrMinOrMaxAgeMissing = errors.New("error min age or max age not supplied")
+
+	// ErrMinOrMaxAgeInvalid is returned when the supplied min or max age is not
+	// an integer
+	ErrMinOrMaxAgeInvalid = errors.New(
+		"error min age or max age can only be an integer",
+	)
+
+	// ErrorMinOrMaxFormat is returned when min age is not less than max age
+	ErrorMinOrMaxFormat = errors.New("error min age must be less than max age")
 )
 
 // Service interface encapsulates all functionalities of the tinydates service
@@ -44,6 +57,10 @@ type Service interface {
 		ctx context.Context,
 		id int,
 		token string,
+		minAge string,
+		minAgeSupplied bool,
+		maxAge string,
+		maxAgeSupplied bool,
 	) (DiscoverResponse, error)
 
 	// Swipe handles the action when a user swipes on a discovered profile.
@@ -122,14 +139,51 @@ func (td tinydates) Discover(
 	ctx context.Context,
 	id int,
 	token string,
+	minAge string,
+	minAgeSupplied bool,
+	maxAge string,
+	maxAgeSupplied bool,
 ) (DiscoverResponse, error) {
 	if !td.cache.Authorized(ctx, token) {
 		return DiscoverResponse{}, ErrUnauthorized
 	}
 
-	profiles, err := td.store.Discover(ctx, id)
-	if err != nil {
-		return DiscoverResponse{}, ErrInternalService
+	// for simplicity enforcing min and max age supplied
+	if minAgeSupplied == true && maxAgeSupplied == false ||
+		minAgeSupplied == false && maxAgeSupplied == true {
+		return DiscoverResponse{}, ErrMinOrMaxAgeMissing
+	}
+
+	var profiles []store.PotentialMatch
+
+	if minAgeSupplied {
+		minAgeInt, err := strconv.Atoi(minAge)
+		if err != nil {
+			return DiscoverResponse{}, ErrMinOrMaxAgeInvalid
+		}
+
+		maxAgeInt, err := strconv.Atoi(maxAge)
+		if err != nil {
+			return DiscoverResponse{}, ErrMinOrMaxAgeInvalid
+		}
+
+		if minAgeInt > maxAgeInt {
+			return DiscoverResponse{}, ErrorMinOrMaxFormat
+		}
+
+		foundProfiles, err := td.store.DiscoverWithAge(ctx, id, minAgeInt, maxAgeInt)
+		if err != nil {
+			return DiscoverResponse{}, ErrInternalService
+		}
+
+		profiles = foundProfiles
+	} else {
+		foundProfiles, err := td.store.Discover(ctx, id)
+		if err != nil {
+			return DiscoverResponse{}, ErrInternalService
+		}
+
+		profiles = foundProfiles
 	}
 
 	discoveredUsers := make([]DiscoveredUser, 0)
