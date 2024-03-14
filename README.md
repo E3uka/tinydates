@@ -23,7 +23,6 @@ curl localhost:8080/user/create
 By using a command line JSON processing tool like [jq](https://stedolan.github.io/jq/) you can "pretty print" the output on your terminal as follows:
 
 ```sh
-# be sure to change the port if you are using a custom port
 curl localhost:8080/user/create | jq .
 ```
 
@@ -78,6 +77,10 @@ curl -X GET \
 -H "Id: <integer-changeme>" \
 localhost:8080/discover?minAge=<integer-changeme>&maxAge=<integer-changeme>
 ```
+
+## ii. Sorting profiles by distance
+
+Returned profiles are now sorted by closest distance to the authenticated user that made the request. A `distanceFromMe` field has been added to the potential matches result when calling the `/discover` endpoint above.
 
 ## Testing
 

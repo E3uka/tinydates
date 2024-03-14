@@ -87,7 +87,8 @@ func TestMain(m *testing.M) {
 	// router initialisation
 	testHandler = NewTinydatesHandler(ctx, service)
 
-	// run tear up and down scripts at start
+	// run tear up and down scripts at start, tear up to connect, reuse and
+	// drop any lingering container resources
 	if err := testStore.Down(ctx); err != nil {
 		log.Fatalf("could not teardown the resource: %s", err)
 	}
@@ -169,10 +170,12 @@ func TestUserLogin(t *testing.T) {
 	}
 }
 
-func TestUserDiscovery(t *testing.T) {
+func TestUserDiscoveryAndResultOrder(t *testing.T) {
 	ctx := context.Background()
 	// create new users
 	user1, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+	_, err = service.CreateUser(ctx)
 	require.NoError(t, err)
 
 	// discovery based on user 1, login to obtain loginResponse
@@ -196,7 +199,19 @@ func TestUserDiscovery(t *testing.T) {
 	// correct number of results
 	require.Equal(t, 200, resp.StatusCode)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(discoverResponse.Results))
+	require.Equal(t, 3, len(discoverResponse.Results))
+	// enforce resuts are ordered by closest to furthest; for simplicity and to
+	// account for randomness three users should be enough for confirmation
+	require.LessOrEqual(
+		t,
+		discoverResponse.Results[0].DistanceFromMe,
+		discoverResponse.Results[1].DistanceFromMe,
+	)
+	require.LessOrEqual(
+		t,
+		discoverResponse.Results[1].DistanceFromMe,
+		discoverResponse.Results[2].DistanceFromMe,
+	)
 }
 
 func TestInvalidQueryUserDiscovery(t *testing.T) {

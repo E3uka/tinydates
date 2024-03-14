@@ -7,6 +7,7 @@ type User struct {
 	Name     string `json:"name"`
 	Gender   string `json:"gender"`
 	Age      int    `json:"age"`
+	Location int    `json:"location"`
 }
 
 type LoginRequest struct {
@@ -19,14 +20,30 @@ type LoginResponse struct {
 }
 
 type DiscoveredUser struct {
-	Id     int    `json:"id"`
-	Name   string `json:"name"`
-	Gender string `json:"gender"`
-	Age    int    `json:"age"`
+	Id             int    `json:"id"`
+	Name           string `json:"name"`
+	Gender         string `json:"gender"`
+	Age            int    `json:"age"`
+	DistanceFromMe int    `json:"distanceFromMe"`
+}
+
+// needed intermediary type to implement sort below
+type DiscoveredUsers []DiscoveredUser
+
+func (du DiscoveredUsers) Len() int {
+	return len(du)
+}
+
+func (du DiscoveredUsers) Less(i, j int) bool {
+	return du[i].DistanceFromMe < du[j].DistanceFromMe
+}
+
+func (du DiscoveredUsers) Swap(i, j int) {
+	du[i], du[j] = du[j], du[i]
 }
 
 type DiscoverResponse struct {
-	Results []DiscoveredUser `json:"results"`
+	Results DiscoveredUsers `json:"results"`
 }
 
 type SwipeRequest struct {

@@ -18,19 +18,16 @@ func NewTinydatesPgStore(db *pgxpool.Pool) Store {
 
 const (
 	storeUser = `
-        INSERT INTO users (email, password, name, gender, age)
-		VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO users (email, password, name, gender, age, location)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`
 )
 
 func (store *tinydatesPgStore) StoreNewUser(
 	ctx context.Context,
-	email,
-	password,
-	name,
-	gender string,
-	age int,
+	email, password, name, gender string,
+	age, location int,
 ) (int, error) {
 	var id int
 
@@ -42,6 +39,7 @@ func (store *tinydatesPgStore) StoreNewUser(
 		name,
 		gender,
 		age,
+		location,
 	).Scan(
 		&id,
 	); err != nil {
@@ -80,7 +78,7 @@ func (store *tinydatesPgStore) GetPassword(
 
 const (
 	discover = `
-        SELECT id, name, gender, age
+        SELECT id, name, gender, age, location
 		FROM users
 		WHERE id != $1
 		AND id NOT IN (
@@ -96,7 +94,6 @@ func (store *tinydatesPgStore) Discover(
 	id int,
 ) ([]PotentialMatch, error) {
 	potentials := make([]PotentialMatch, 0)
-
 	rows, err := store.Db.Query(ctx, discover, id)
 	if err != nil {
 		return nil, err
@@ -111,18 +108,20 @@ func (store *tinydatesPgStore) Discover(
 			&user.Name,
 			&user.Gender,
 			&user.Age,
+			&user.Location,
 		); err != nil {
 			return nil, err
 		}
 		potentials = append(potentials, user)
 	}
 
+
 	return potentials, nil
 }
 
 const (
 	discoverWithAge = `
-        SELECT id, name, gender, age
+        SELECT id, name, gender, age, location
 		FROM users
 		WHERE id != $1
 		AND id NOT IN (
@@ -156,6 +155,7 @@ func (store *tinydatesPgStore) DiscoverWithAge(
 			&user.Name,
 			&user.Gender,
 			&user.Age,
+			&user.Location,
 		); err != nil {
 			return nil, err
 		}
@@ -214,4 +214,29 @@ func (store *tinydatesPgStore) Swipe(
 	}
 
 	return matchId, match, nil
+}
+
+const (
+	location = `
+        SELECT location
+		FROM users
+		WHERE id = $1
+	`
+)
+
+func (store *tinydatesPgStore) GetLocation(
+	ctx context.Context,
+	id int,
+) (int, error) {
+	var userLocation int
+
+	if err := store.Db.QueryRow(
+		ctx,
+		location,
+		id,
+	).Scan(&userLocation); err != nil {
+		return 0, err
+	}
+
+	return userLocation, nil
 }

@@ -4,8 +4,9 @@ package store
 // Discover. This is the cost required to abstract the store methods over a
 // concrete implementation.
 type PotentialMatch struct {
-	Id     int
-	Name   string
-	Gender string
-	Age    int
+	Id       int
+	Name     string
+	Gender   string
+	Age      int
+	Location int
 }

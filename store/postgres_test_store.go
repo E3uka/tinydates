@@ -12,8 +12,7 @@ func NewTestTinydatesPgStore(db *pgxpool.Pool) TestStore {
 
 const (
 	Up = `
-		BEGIN;
-
+        -- migration 000001
 		CREATE TABLE IF NOT EXISTS "users" (
 			"id" bigserial PRIMARY KEY,
 			"email" varchar NOT NULL,
@@ -24,6 +23,7 @@ const (
 			UNIQUE(id, email)
 		);
 
+        -- migration 000002
 		CREATE TABLE IF NOT EXISTS "swipes" (
 			"id" bigserial PRIMARY KEY,
 			"swiper" integer NOT NULL,
@@ -31,11 +31,11 @@ const (
 			"decision" boolean NOT NULL
 		);
 
-		COMMIT;
+        -- migration 000003
+		ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "location" integer NOT NULL DEFAULT 0;
 	`
 )
 
-// manual calling of database migration to create test instance
 func (store *tinydatesPgStore) Up(ctx context.Context) error {
 	tx, err := store.Db.Begin(ctx)
 	if err != nil {
@@ -57,8 +57,14 @@ func (store *tinydatesPgStore) Up(ctx context.Context) error {
 
 const (
 	Down = `
-		DROP TABLE IF EXISTS "users";
+        -- migration 000003
+		ALTER TABLE IF EXISTS "users" DROP COLUMN "location";
+
+        -- migration 000002
 		DROP TABLE IF EXISTS "swipes";
+
+        -- migration 000001
+		DROP TABLE IF EXISTS "users";
 	`
 )
 

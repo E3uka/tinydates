@@ -9,7 +9,7 @@ type Store interface {
 	StoreNewUser(
 		ctx context.Context,
 		email, password, name, gender string,
-		age int,
+		age, location int,
 	) (int, error)
 
 	// GetPassword returns the password for the user with the supplied email 
@@ -22,24 +22,27 @@ type Store interface {
 	// supplied id and filtered by supplied age
 	DiscoverWithAge(
 		ctx context.Context,
-		id int,
-		minAge int,
-		maxAge int,
+		id, minAge, maxAge int,
 	) ([]PotentialMatch, error)
 
 	// Swipe adds a swipe decision for the swiper and returns the match id and
 	// whether the swiper has also been favourably swiped by the swipee
 	Swipe(
 		ctx context.Context,
-		swiperId int,
-		swipeeId int,
+		swiperId, swipeeId int,
 		decision bool,
 	) (int, bool, error)
+
+	// GetLocation returns the location for the user with the supplied id
+	GetLocation(ctx context.Context, id int) (int, error)
 }
 
 // TestStore are the test methods used for testing the tinydates database.
-// These embed the store methods but provide database creation and destruction
-// methods for provisioning test instances.
+// These embed the store methods to get access to all its methods but provide
+// database creation and destruction methods for provisioning test instances.
+//
+// Safety: This is a whole separate interface so that the 'production' database
+// does not accidentally get dropped.
 type TestStore interface {
 	Store
 

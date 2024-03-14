@@ -4,16 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
+	"sort"
 	"strconv"
 	"tinydates/cache"
 	"tinydates/store"
 )
 
 const (
-	letters   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	maxLength = 20
-	maxAge    = 120
+	letters     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	maxAge      = 120
+	maxDistance = 50
+	maxLength   = 20
 )
 
 var gender = []string{"male", "female", "other"}
@@ -87,6 +90,7 @@ func (td tinydates) CreateUser(ctx context.Context) (User, error) {
 	randomPassword := createRandomString(maxLength)
 	randomGender := gender[rand.Intn(len(gender))]
 	randomAge := rand.Intn(maxAge)
+	randomLocation := rand.Intn(maxDistance)
 
 	// store user in the database
 	newId, err := td.store.StoreNewUser(
@@ -96,6 +100,7 @@ func (td tinydates) CreateUser(ctx context.Context) (User, error) {
 		randomName,
 		randomGender,
 		randomAge,
+		randomLocation,
 	)
 	if err != nil {
 		// for simplicity not handling the specific error from the data store
@@ -110,6 +115,7 @@ func (td tinydates) CreateUser(ctx context.Context) (User, error) {
 		Name:     randomName,
 		Gender:   randomGender,
 		Age:      randomAge,
+		Location: randomLocation,
 	}, nil
 }
 
@@ -148,15 +154,15 @@ func (td tinydates) Discover(
 		return DiscoverResponse{}, ErrUnauthorized
 	}
 
-	// for simplicity enforcing min and max age supplied
-	if minAgeSupplied == true && maxAgeSupplied == false ||
-		minAgeSupplied == false && maxAgeSupplied == true {
-		return DiscoverResponse{}, ErrMinOrMaxAgeMissing
-	}
-
 	var profiles []store.PotentialMatch
 
-	if minAgeSupplied {
+	if minAgeSupplied || maxAgeSupplied {
+		// for simplicity enforcing min and max age supplied
+		if minAgeSupplied == true && maxAgeSupplied == false ||
+			minAgeSupplied == false && maxAgeSupplied == true {
+			return DiscoverResponse{}, ErrMinOrMaxAgeMissing
+		}
+
 		minAgeInt, err := strconv.Atoi(minAge)
 		if err != nil {
 			return DiscoverResponse{}, ErrMinOrMaxAgeInvalid
@@ -180,13 +186,19 @@ func (td tinydates) Discover(
 	} else {
 		foundProfiles, err := td.store.Discover(ctx, id)
 		if err != nil {
-			return DiscoverResponse{}, ErrInternalService
+			return DiscoverResponse{}, err
 		}
 
 		profiles = foundProfiles
 	}
 
-	discoveredUsers := make([]DiscoveredUser, 0)
+	// get access to the users current location
+	currentLocation, err := td.store.GetLocation(ctx, id)
+	if err != nil {
+		return DiscoverResponse{}, ErrInternalService
+	}
+
+	discoveredUsers := make(DiscoveredUsers, 0)
 
 	for _, profile := range profiles {
 		var usr DiscoveredUser
@@ -195,9 +207,16 @@ func (td tinydates) Discover(
 		usr.Name = profile.Name
 		usr.Gender = profile.Gender
 		usr.Age = profile.Age
+		usr.DistanceFromMe = calculateDistance(
+			currentLocation,
+			profile.Location,
+		)
 
 		discoveredUsers = append(discoveredUsers, usr)
 	}
+
+	// sort interface has been implemented
+	sort.Sort(discoveredUsers)
 
 	return DiscoverResponse{Results: discoveredUsers}, nil
 }
@@ -230,10 +249,20 @@ func (td tinydates) Swipe(
 	}
 }
 
+// calculateDistance uses a simple subtraction of the magnitude of the users
+// location from the potential match location to find distance. This assumes
+// for simplicity that all locations are from a common origin of (0, 0) on a
+// 2D plane of which the magnitude from origin is stored.
+func calculateDistance(userLocation, potentialMatchLocation int) int {
+	distance := math.Abs(float64(userLocation) - float64(potentialMatchLocation))
+	return int(distance)
+}
+
 func createRandomString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
+
 	return string(b)
 }
