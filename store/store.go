@@ -25,6 +25,13 @@ type Store interface {
 		id, minAge, maxAge int,
 	) ([]PotentialMatch, error)
 
+	// DiscoverWithPopulariy finds potential profiles that are a match for the 
+	// user supplied id and ordered by popularity
+	DiscoverByPopularity(
+		ctx context.Context,
+		id int,
+	) ([]PotentialMatch, error)
+
 	// Swipe adds a swipe decision for the swiper and returns the match id and
 	// whether the swiper has also been favourably swiped by the swipee
 	Swipe(

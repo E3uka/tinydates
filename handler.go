@@ -64,6 +64,7 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 		token := c.GetHeader("Authorization")
 		minAge, minAgeSupplied := c.GetQuery("minAge")
 		maxAge, maxAgeSupplied := c.GetQuery("maxAge")
+		byPopularity, byPopularitySupplied := c.GetQuery("orderByPopularity")
 
 		id, err := strconv.Atoi(idString)
 		if err != nil {
@@ -74,6 +75,19 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 			return
 		}
 
+		orderByPopularity := false
+		if byPopularitySupplied {
+			orderByPopularity, err = strconv.ParseBool(byPopularity)
+			if err != nil {
+				c.JSON(
+					http.StatusBadRequest,
+					GenericErrResponse{Err: err.Error()},
+				)
+				return
+			}
+
+		}
+
 		users, err := svc.Discover(
 			ctx,
 			id,
@@ -82,6 +96,7 @@ func NewTinydatesHandler(ctx context.Context, svc Service) http.Handler {
 			minAgeSupplied,
 			maxAge,
 			maxAgeSupplied,
+			orderByPopularity,
 		)
 		switch err {
 		case nil:

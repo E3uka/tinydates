@@ -200,7 +200,7 @@ func TestUserDiscoveryAndResultOrder(t *testing.T) {
 	require.Equal(t, 200, resp.StatusCode)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(discoverResponse.Results))
-	// enforce resuts are ordered by closest to furthest; for simplicity and to
+	// check results are ordered by closest to furthest; for simplicity and to
 	// account for randomness three users should be enough for confirmation
 	require.LessOrEqual(
 		t,
@@ -211,6 +211,59 @@ func TestUserDiscoveryAndResultOrder(t *testing.T) {
 		t,
 		discoverResponse.Results[1].DistanceFromMe,
 		discoverResponse.Results[2].DistanceFromMe,
+	)
+}
+
+func TestUserDiscoveryByPopularity(t *testing.T) {
+	ctx := context.Background()
+	// create new users
+	user1, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+	_, err = service.CreateUser(ctx)
+	require.NoError(t, err)
+
+	// discovery based on user 1, login to obtain loginResponse
+	loginResponse, err := service.Login(ctx, LoginRequest{user1.Email, user1.Password})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "/discover?orderByPopularity=true", nil)
+	req.WithContext(ctx)
+	// for simplicity not following standard Authorization: <scheme> <token>
+	req.Header.Set("Id", strconv.Itoa(user1.Id))
+	req.Header.Set("Authorization", loginResponse.Token)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	testHandler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	var discoverResponse DiscoverResponse
+	err = json.NewDecoder(resp.Body).Decode(&discoverResponse)
+
+	// for simplicity not checking exact users match just status code and
+	// correct number of results
+	require.Equal(t, 200, resp.StatusCode)
+	require.NoError(t, err)
+	require.Equal(t, 5, len(discoverResponse.Results))
+	// check results are ordered by Popularity;
+	require.GreaterOrEqual(
+		t,
+		discoverResponse.Results[0].Popularity,
+		discoverResponse.Results[1].Popularity,
+	)
+	require.GreaterOrEqual(
+		t,
+		discoverResponse.Results[1].Popularity,
+		discoverResponse.Results[2].Popularity,
+	)
+	require.GreaterOrEqual(
+		t,
+		discoverResponse.Results[2].Popularity,
+		discoverResponse.Results[3].Popularity,
+	)
+	require.GreaterOrEqual(
+		t,
+		discoverResponse.Results[3].Popularity,
+		discoverResponse.Results[4].Popularity,
 	)
 }
 

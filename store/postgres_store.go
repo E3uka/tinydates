@@ -94,6 +94,7 @@ func (store *tinydatesPgStore) Discover(
 	id int,
 ) ([]PotentialMatch, error) {
 	potentials := make([]PotentialMatch, 0)
+
 	rows, err := store.Db.Query(ctx, discover, id)
 	if err != nil {
 		return nil, err
@@ -114,7 +115,6 @@ func (store *tinydatesPgStore) Discover(
 		}
 		potentials = append(potentials, user)
 	}
-
 
 	return potentials, nil
 }
@@ -156,6 +156,57 @@ func (store *tinydatesPgStore) DiscoverWithAge(
 			&user.Gender,
 			&user.Age,
 			&user.Location,
+		); err != nil {
+			return nil, err
+		}
+		potentials = append(potentials, user)
+	}
+
+	return potentials, nil
+}
+
+const (
+	discoverByPopularity = `
+        WITH
+		popularity_counts AS (
+		    SELECT swipee, decision, COUNT(*) AS popularity
+			FROM swipes
+			GROUP BY swipee, decision
+			HAVING swipee != $1 AND decision = true
+		),
+		discovery AS (
+			SELECT id, name, gender, age, location
+			FROM users
+			WHERE id != $1
+		)
+		SELECT id, name, gender, age, location, COALESCE(popularity, 0) AS popularity
+		FROM discovery LEFT JOIN popularity_counts ON id = swipee
+		ORDER BY popularity DESC
+	`
+)
+
+func (store *tinydatesPgStore) DiscoverByPopularity(
+	ctx context.Context,
+	id int,
+) ([]PotentialMatch, error) {
+	potentials := make([]PotentialMatch, 0)
+
+	rows, err := store.Db.Query(ctx, discoverByPopularity, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var user PotentialMatch
+
+		if err := rows.Scan(
+			&user.Id,
+			&user.Name,
+			&user.Gender,
+			&user.Age,
+			&user.Location,
+			&user.Popularity,
 		); err != nil {
 			return nil, err
 		}

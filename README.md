@@ -82,6 +82,18 @@ localhost:8080/discover?minAge=<integer-changeme>&maxAge=<integer-changeme>
 
 Returned profiles are now sorted by closest distance to the authenticated user that made the request. A `distanceFromMe` field has been added to the potential matches result when calling the `/discover` endpoint above.
 
+## iii. Sorting profiles by attractiveness
+
+Returned profiles are now sorted by popularity, when a user has received a positive swipe (decision = true) entry as a result of hitting the swipes endpoint it increases their calculated popularity count. Hitting the `/discover?orderByPopularity` endpoint will now sort the results by descending popularity. An example endpoint is below:
+
+```
+curl -X GET \
+-H "Content-Type: application/json" \
+-H "Authorization: <string-changeme>" \
+-H "Id: <integer-changeme>" \
+localhost:8080/discover?orderByPopularity=<boolean-changeme>
+```
+
 ## Testing
 
 There has been a series of test cases that have been produced. This can be found in the [`service_test`](./service_test.go) file. 

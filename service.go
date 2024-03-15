@@ -64,6 +64,7 @@ type Service interface {
 		minAgeSupplied bool,
 		maxAge string,
 		maxAgeSupplied bool,
+		orderByPopularity bool,
 	) (DiscoverResponse, error)
 
 	// Swipe handles the action when a user swipes on a discovered profile.
@@ -149,6 +150,7 @@ func (td tinydates) Discover(
 	minAgeSupplied bool,
 	maxAge string,
 	maxAgeSupplied bool,
+	orderByPopularity bool,
 ) (DiscoverResponse, error) {
 	if !td.cache.Authorized(ctx, token) {
 		return DiscoverResponse{}, ErrUnauthorized
@@ -156,7 +158,14 @@ func (td tinydates) Discover(
 
 	var profiles []store.PotentialMatch
 
-	if minAgeSupplied || maxAgeSupplied {
+	if orderByPopularity {
+		foundProfiles, err := td.store.DiscoverByPopularity(ctx, id)
+		if err != nil {
+			return DiscoverResponse{}, err
+		}
+
+		profiles = foundProfiles
+	} else if minAgeSupplied || maxAgeSupplied {
 		// for simplicity enforcing min and max age supplied
 		if minAgeSupplied == true && maxAgeSupplied == false ||
 			minAgeSupplied == false && maxAgeSupplied == true {
@@ -215,8 +224,10 @@ func (td tinydates) Discover(
 		discoveredUsers = append(discoveredUsers, usr)
 	}
 
-	// sort interface has been implemented
-	sort.Sort(discoveredUsers)
+	if !orderByPopularity {
+		// sort interface has been implemented for sorting by location
+		sort.Sort(discoveredUsers)
+	}
 
 	return DiscoverResponse{Results: discoveredUsers}, nil
 }

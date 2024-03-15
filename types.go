@@ -25,6 +25,7 @@ type DiscoveredUser struct {
 	Gender         string `json:"gender"`
 	Age            int    `json:"age"`
 	DistanceFromMe int    `json:"distanceFromMe"`
+	Popularity     int    `json:"popularity"`
 }
 
 // needed intermediary type to implement sort below
