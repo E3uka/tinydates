@@ -165,7 +165,16 @@ func (td tinydates) Discover(
 		}
 
 		profiles = foundProfiles
-	} else if minAgeSupplied || maxAgeSupplied {
+	} else {
+		foundProfiles, err := td.store.Discover(ctx, id)
+		if err != nil {
+			return DiscoverResponse{}, err
+		}
+
+		profiles = foundProfiles
+	}
+
+	if minAgeSupplied || maxAgeSupplied {
 		// for simplicity enforcing min and max age supplied
 		if minAgeSupplied == true && maxAgeSupplied == false ||
 			minAgeSupplied == false && maxAgeSupplied == true {
@@ -186,19 +195,15 @@ func (td tinydates) Discover(
 			return DiscoverResponse{}, ErrorMinOrMaxFormat
 		}
 
-		foundProfiles, err := td.store.DiscoverWithAge(ctx, id, minAgeInt, maxAgeInt)
-		if err != nil {
-			return DiscoverResponse{}, ErrInternalService
+		ageFilteredProfiles := make([]store.PotentialMatch, 0)
+
+		for _, profile := range profiles {
+			if profile.Age >= minAgeInt && profile.Age <= maxAgeInt {
+				ageFilteredProfiles = append(ageFilteredProfiles, profile)
+			}
 		}
 
-		profiles = foundProfiles
-	} else {
-		foundProfiles, err := td.store.Discover(ctx, id)
-		if err != nil {
-			return DiscoverResponse{}, err
-		}
-
-		profiles = foundProfiles
+		profiles = ageFilteredProfiles
 	}
 
 	// get access to the users current location
@@ -241,13 +246,17 @@ func (td tinydates) Swipe(
 		return SwipeResponse{}, ErrUnauthorized
 	}
 
-	matchId, match, err := td.store.Swipe(
+	matchId, err := td.store.Swipe(
 		ctx,
 		req.SwiperId,
 		req.SwipeeId,
 		req.Decision,
 	)
+	if err != nil {
+		return SwipeResponse{}, ErrInternalService
+	}
 
+	match, err := td.store.IsMatch(ctx, req.SwipeeId, req.SwiperId)
 	if err != nil {
 		return SwipeResponse{}, ErrInternalService
 	}

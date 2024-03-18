@@ -120,52 +120,6 @@ func (store *tinydatesPgStore) Discover(
 }
 
 const (
-	discoverWithAge = `
-        SELECT id, name, gender, age, location
-		FROM users
-		WHERE id != $1
-		AND id NOT IN (
-		    SELECT swipee
-			FROM swipes
-			WHERE swiper = $1
-		)
-		AND age BETWEEN $2 AND $3
-	`
-)
-
-func (store *tinydatesPgStore) DiscoverWithAge(
-	ctx context.Context,
-	id int,
-	minAge int,
-	maxAge int,
-) ([]PotentialMatch, error) {
-	potentials := make([]PotentialMatch, 0)
-
-	rows, err := store.Db.Query(ctx, discoverWithAge, id, minAge, maxAge)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	
-	for rows.Next() {
-		var user PotentialMatch
-
-		if err := rows.Scan(
-			&user.Id,
-			&user.Name,
-			&user.Gender,
-			&user.Age,
-			&user.Location,
-		); err != nil {
-			return nil, err
-		}
-		potentials = append(potentials, user)
-	}
-
-	return potentials, nil
-}
-
-const (
 	discoverByPopularity = `
         WITH
 		popularity_counts AS (
@@ -222,14 +176,6 @@ const (
 		VALUES ($1, $2, $3)
 		RETURNING id;
 	`
-
-	isMatch = `
-        SELECT EXISTS(
-			SELECT 1 FROM swipes
-			WHERE swiper = $1
-			AND swipee = $2
-		)
-	`
 )
 
 func (store *tinydatesPgStore) Swipe(
@@ -237,9 +183,8 @@ func (store *tinydatesPgStore) Swipe(
 	swiperId int,
 	swipeeId int,
 	decision bool,
-) (int, bool, error) {
+) (int, error) {
 	var matchId int
-	var match bool
 
 	if err := store.Db.QueryRow(
 		ctx,
@@ -250,8 +195,28 @@ func (store *tinydatesPgStore) Swipe(
 	).Scan(
 		&matchId,
 	); err != nil {
-		return 0, false, err
+		return 0, err
 	}
+
+	return matchId, nil
+}
+
+const (
+	isMatch = `
+        SELECT EXISTS(
+			SELECT 1 FROM swipes
+			WHERE swiper = $1
+			AND swipee = $2
+		)
+	`
+)
+
+func (store *tinydatesPgStore) IsMatch(
+	ctx context.Context,
+	swipeeId int,
+	swiperId int,
+) (bool, error) {
+	var match bool
 
 	if err := store.Db.QueryRow(
 		ctx,
@@ -261,10 +226,10 @@ func (store *tinydatesPgStore) Swipe(
 	).Scan(
 		&match,
 	); err != nil {
-		return 0, false, err
+		return false, err
 	}
 
-	return matchId, match, nil
+	return match, nil
 }
 
 const (

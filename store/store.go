@@ -18,13 +18,6 @@ type Store interface {
 	// Discover finds profiles that are a match for the user with supplied id
 	Discover(ctx context.Context, id int) ([]PotentialMatch, error)
 
-	// DiscoverWithAge finds profiles that are a match for the user with 
-	// supplied id and filtered by supplied age
-	DiscoverWithAge(
-		ctx context.Context,
-		id, minAge, maxAge int,
-	) ([]PotentialMatch, error)
-
 	// DiscoverWithPopulariy finds potential profiles that are a match for the 
 	// user supplied id and ordered by popularity
 	DiscoverByPopularity(
@@ -38,7 +31,11 @@ type Store interface {
 		ctx context.Context,
 		swiperId, swipeeId int,
 		decision bool,
-	) (int, bool, error)
+	) (int, error)
+
+	// IsMatch returns whether the swipee has been also been favourably swiped
+	// by the swiper
+	IsMatch(ctx context.Context, swipeeId, swiperId int) (bool, error)
 
 	// GetLocation returns the location for the user with the supplied id
 	GetLocation(ctx context.Context, id int) (int, error)

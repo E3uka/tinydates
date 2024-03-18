@@ -172,7 +172,6 @@ func TestUserLogin(t *testing.T) {
 
 func TestUserDiscoveryAndResultOrder(t *testing.T) {
 	ctx := context.Background()
-	// create new users
 	user1, err := service.CreateUser(ctx)
 	require.NoError(t, err)
 	_, err = service.CreateUser(ctx)
@@ -214,6 +213,41 @@ func TestUserDiscoveryAndResultOrder(t *testing.T) {
 	)
 }
 
+func TestUserDiscoveryByAge(t *testing.T) {
+	ctx := context.Background()
+	// create new users
+	user1, err := service.CreateUser(ctx)
+	require.NoError(t, err)
+	_, err = service.CreateUser(ctx)
+	require.NoError(t, err)
+
+	// discovery based on user 1, login to obtain loginResponse
+	loginResponse, err := service.Login(ctx, LoginRequest{user1.Email, user1.Password})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "/discover?minAge=20&maxAge=40", nil)
+	req.WithContext(ctx)
+	// for simplicity not following standard Authorization: <scheme> <token>
+	req.Header.Set("Id", strconv.Itoa(user1.Id))
+	req.Header.Set("Authorization", loginResponse.Token)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	testHandler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	var discoverResponse DiscoverResponse
+	err = json.NewDecoder(resp.Body).Decode(&discoverResponse)
+
+	// for simplicity not checking exact users match just status code and
+	// correct number of results
+	require.Equal(t, 200, resp.StatusCode)
+	require.NoError(t, err)
+	for _, found := range discoverResponse.Results {
+		require.GreaterOrEqual(t, found.Age, 20)
+		require.LessOrEqual(t, found.Age, 40)
+	}
+}
+
 func TestUserDiscoveryByPopularity(t *testing.T) {
 	ctx := context.Background()
 	// create new users
@@ -243,7 +277,7 @@ func TestUserDiscoveryByPopularity(t *testing.T) {
 	// correct number of results
 	require.Equal(t, 200, resp.StatusCode)
 	require.NoError(t, err)
-	require.Equal(t, 5, len(discoverResponse.Results))
+	require.Equal(t, 7, len(discoverResponse.Results))
 	// check results are ordered by Popularity;
 	require.GreaterOrEqual(
 		t,
